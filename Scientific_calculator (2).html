@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scientific Calculator</title>
+  <style>
+    /* ── reset ── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0b0b0e;
+      padding: 16px;
+      background-image: radial-gradient(circle at 20% 30%, #1a1a24 0%, #0b0b0e 90%);
+    }
+
+    /* ── card ── */
+    .calc {
+      background: #15151d;
+      border-radius: 28px;
+      width: 100%;
+      max-width: 460px;
+      padding: 1.5rem 1.25rem 1.25rem;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      transition: all 0.2s;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    /* ── display ── */
+    .display {
+      background: #0d0d13;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      padding: 18px 20px 14px;
+      margin-bottom: 1.25rem;
+      text-align: right;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      transition: border 0.2s;
+    }
+    .display:focus-within {
+      border-color: rgba(0, 229, 255, 0.15);
+    }
+
+    .display .expr {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.25);
+      min-height: 22px;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      overflow-x: auto;
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+      transition: color 0.2s;
+    }
+    .display .expr.has-result {
+      color: rgba(0, 229, 255, 0.5);
+    }
+
+    .display .result {
+      font-size: 38px;
+      font-weight: 500;
+      color: #f0f4ff;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      overflow-x: auto;
+      white-space: nowrap;
+      line-height: 1.2;
+      letter-spacing: -0.5px;
+      transition: color 0.2s;
+      text-shadow: 0 0 40px rgba(0, 229, 255, 0.03);
+    }
+    .display .result.error {
+      color: #ff6b6b;
+    }
+    .display .result.success {
+      color: #00e5ff;
+    }
+
+    /* ── mode row ── */
+    .mode-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      align-items: center;
+      background: #0d0d13;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .mode-btn {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 16px;
+      border-radius: 9px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      letter-spacing: 0.3px;
+      font-family: inherit;
+    }
+    .mode-btn:hover {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .mode-btn.active {
+      background: rgba(0, 229, 255, 0.12);
+      color: #00e5ff;
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.04);
+    }
+
+    .mode-label {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.15);
+      margin-left: auto;
+      padding-right: 8px;
+      letter-spacing: 0.5px;
+      font-weight: 400;
+    }
+
+    /* ── button grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 7px;
+    }
+
+    .btn {
+      padding: 12px 4px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 14px;
+      font-weight: 450;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+      user-select: none;
+      font-family: inherit;
+      position: relative;
+      overflow: hidden;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 0.2px;
+    }
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: radial-gradient(circle at center, rgba(255, 255, 255, 0.04), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .btn:hover::after {
+      opacity: 1;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.07);
+      transform: translateY(-1px);
+    }
+    .btn:active {
+      transform: scale(0.94);
+      transition-duration: 0.05s;
+    }
+
+    /* ── button variants ── */
+    .btn.num {
+      background: rgba(255, 255, 255, 0.05);
+      color: #f0f4ff;
+      font-weight: 500;
+      font-size: 16px;
+    }
+    .btn.num:hover {
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    .btn.op {
+      background: rgba(0, 229, 255, 0.07);
+      color: #4dd0e1;
+      font-weight: 500;
+    }
+    .btn.op:hover {
+      background: rgba(0, 229, 255, 0.14);
+      color: #80deea;
+    }
+
+    .btn.fn {
+      background: rgba(255, 107, 107, 0.05);
+      color: rgba(255, 150, 150, 0.6);
+      font-size: 12px;
+      font-weight: 450;
+    }
+    .btn.fn:hover {
+      background: rgba(255, 107, 107, 0.12);
+      color: rgba(255, 180, 180, 0.9);
+    }
+
+    .btn.eq {
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.18), rgba(0, 150, 255, 0.10));
+      color: #00e5ff;
+      font-weight: 600;
+      font-size: 18px;
+      box-shadow: 0 0 30px rgba(0, 229, 255, 0.03);
+    }
+    .btn.eq:hover {
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.28), rgba(0, 150, 255, 0.18));
+      box-shadow: 0 0 40px rgba(0, 229, 255, 0.08);
+    }
+
+    .btn.clr {
+      background: rgba(255, 70, 70, 0.07);
+      color: #ff7a7a;
+    }
+    .btn.clr:hover {
+      background: rgba(255, 70, 70, 0.15);
+    }
+
+    .btn.span-2 {
+      grid-column: span 2;
+    }
+
+    /* ── scrollbars ── */
+    .display .expr::-webkit-scrollbar,
+    .display .result::-webkit-scrollbar {
+      height: 2px;
+    }
+    .display .expr::-webkit-scrollbar-track,
+    .display .result::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .display .expr::-webkit-scrollbar-thumb,
+    .display .result::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+    }
+
+    /* ── responsive ── */
+    @media (max-width: 480px) {
+      .calc {
+        padding: 1rem 0.85rem 0.85rem;
+        border-radius: 20px;
+      }
+      .btn {
+        min-height: 42px;
+        font-size: 12px;
+        padding: 8px 2px;
+        border-radius: 10px;
+      }
+      .btn.num {
+        font-size: 14px;
+      }
+      .btn.fn {
+        font-size: 10px;
+      }
+      .btn.eq {
+        font-size: 16px;
+      }
+      .display .result {
+        font-size: 30px;
+      }
+      .display .expr {
+        font-size: 12px;
+      }
+      .grid {
+        gap: 5px;
+      }
+      .mode-btn {
+        font-size: 11px;
+        padding: 4px 12px;
+      }
+      .display {
+        padding: 14px 14px 10px;
+        min-height: 72px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .calc {
+        padding: 0.7rem 0.6rem 0.6rem;
+        border-radius: 16px;
+      }
+      .btn {
+        min-height: 36px;
+        font-size: 10px;
+        border-radius: 8px;
+      }
+      .btn.num {
+        font-size: 12px;
+      }
+      .btn.fn {
+        font-size: 9px;
+      }
+      .btn.eq {
+        font-size: 14px;
+      }
+      .display .result {
+        font-size: 24px;
+      }
+      .display .expr {
+        font-size: 10px;
+      }
+      .grid {
+        gap: 4px;
+      }
+      .display {
+        padding: 10px 10px 8px;
+        min-height: 60px;
+        border-radius: 12px;
+      }
+    }
+
+    /* ── animations ── */
+    @keyframes resultPop {
+      0% {
+        transform: scale(0.94);
+        opacity: 0.4;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+    .display .result.pop {
+      animation: resultPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes keyGlow {
+      0%,
+      100% {
+        box-shadow: 0 0 0 rgba(0, 229, 255, 0);
+      }
+      50% {
+        box-shadow: 0 0 30px rgba(0, 229, 255, 0.10);
+      }
+    }
+    .btn.eq.glow {
+      animation: keyGlow 0.4s ease 2;
+    }
+
+    .kbd-hint {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.06);
+      letter-spacing: 0.5px;
+      font-weight: 400;
+    }
+    .kbd-hint kbd {
+      display: inline-block;
+      padding: 0 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 4px;
+      font-family: inherit;
+      color: rgba(255, 255, 255, 0.10);
+      font-size: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="calc">
+    <!-- display -->
+    <div class="display" id="display">
+      <div class="expr" id="expr"></div>
+      <div class="result" id="result">0</div>
+    </div>
+
+    <!-- mode -->
+    <div class="mode-row">
+      <button class="mode-btn active" id="btn-deg" onclick="setMode('deg')">DEG</button>
+      <button class="mode-btn" id="btn-rad" onclick="setMode('rad')">RAD</button>
+      <span class="mode-label" id="mode-label">Degrees</span>
+    </div>
+
+    <!-- buttons -->
+    <div class="grid" id="buttons"></div>
+
+    <div class="kbd-hint">
+      <kbd>⌨</kbd> keyboard · <kbd>Esc</kbd> clear · <kbd>Enter</kbd> =
+    </div>
+  </div>
+
+  <script>
+    // ── state ──
+    let expr = '';
+    let mode = 'deg';
+    let justEvaled = false;
+    let lastResult = null;
+
+    // ── DOM refs ──
+    const exprEl = document.getElementById('expr');
+    const resultEl = document.getElementById('result');
+    const displayEl = document.getElementById('display');
+
+    // ── angle helpers ──
+    const toRad = v => mode === 'deg' ? v * Math.PI / 180 : v;
+    const fromRad = v => mode === 'deg' ? v * 180 / Math.PI : v;
+
+    // ── mode ──
+    function setMode(m) {
+      mode = m;
+      document.getElementById('btn-deg').classList.toggle('active', m === 'deg');
+      document.getElementById('btn-rad').classList.toggle('active', m === 'rad');
+      document.getElementById('mode-label').textContent = m === 'deg' ? 'Degrees' : 'Radians';
+    }
+
+    // ── display ──
+    function setResult(val, isError = false) {
+      let display;
+      if (typeof val === 'number') {
+        if (!isFinite(val) || isNaN(val)) {
+          display = 'Error';
+          isError = true;
+        } else if (Number.isInteger(val) && Math.abs(val) < 1e15) {
+          display = val.toString();
+        } else {
+          display = parseFloat(val.toPrecision(10)).toString();
+          if (display.length > 16) display = val.toExponential(6);
+        }
+      } else {
+        display = val;
+      }
+      resultEl.textContent = display;
+      resultEl.className = 'result pop';
+      if (isError) {
+        resultEl.classList.add('error');
+        resultEl.classList.remove('success');
+      } else {
+        resultEl.classList.add('success');
+        resultEl.classList.remove('error');
+      }
+      setTimeout(() => resultEl.classList.remove('pop'), 250);
+      return display;
+    }
+
+    function updateExpr(text) {
+      exprEl.textContent = text || '\u200B';
+      exprEl.classList.toggle('has-result', text.includes('='));
+    }
+
+    function appendExpr(ch) {
+      if (justEvaled && /[\d.]/.test(ch)) {
+        expr = '';
+        justEvaled = false;
+      }
+      if (justEvaled && /[+\-*/^()]/.test(ch)) {
+        justEvaled = false;
+      }
+      justEvaled = false;
+      expr += ch;
+      updateExpr(expr);
+      resultEl.textContent = expr || '0';
+      resultEl.className = 'result';
+      resultEl.classList.remove('error', 'success');
+    }
+
+    function appendVal(v) {
+      if (justEvaled) expr = '';
+      justEvaled = false;
+      const s = typeof v === 'number' ? parseFloat(v.toPrecision(10)).toString() : v;
+      expr += s;
+      updateExpr(expr);
+      resultEl.textContent = expr;
+      resultEl.className = 'result';
+      resultEl.classList.remove('error', 'success');
+    }
+
+    // ── eval (safe) ──
+    function evalExpr(e) {
+      const safe = e
+        .replace(/\^/g, '**')
+        .replace(/[^0-9+\-*\/().eE,]/g, '');
+      return Function('"use strict"; return (' + safe + ')')();
+    }
+
+    // ── unary functions ──
+    function applyFn(fn) {
+      if (!expr) return;
+      try {
+        const val = evalExpr(expr);
+        if (isNaN(val) || !isFinite(val)) { setResult('Error', true); return; }
+        let res;
+        switch (fn) {
+          case 'sin':
+            res = Math.sin(toRad(val));
+            break;
+          case 'cos':
+            res = Math.cos(toRad(val));
+            break;
+          case 'tan':
+            res = Math.tan(toRad(val));
+            break;
+          case 'asin':
+            res = fromRad(Math.asin(val));
+            break;
+          case 'acos':
+            res = fromRad(Math.acos(val));
+            break;
+          case 'atan':
+            res = fromRad(Math.atan(val));
+            break;
+          case 'ln':
+            res = Math.log(val);
+            break;
+          case 'log10':
+            res = Math.log10(val);
+            break;
+          case 'sqrt':
+            res = Math.sqrt(val);
+            break;
+          case 'sq':
+            res = val * val;
+            break;
+          case 'inv':
+            res = 1 / val;
+            break;
+          case 'abs':
+            res = Math.abs(val);
+            break;
+          case 'pct':
+            res = val / 100;
+            break;
+          case 'fact':
+            if (val < 0 || !Number.isInteger(val) || val > 170) {
+              setResult('Error', true);
+              return;
+            }
+            res = factorial(val);
+            break;
+          default:
+            return;
+        }
+        if (!isFinite(res) || isNaN(res)) { setResult('Error', true); return; }
+        const displayVal = parseFloat(res.toPrecision(10));
+        const label = fn === 'sq' ? 'sqr' : fn === 'log10' ? 'log' : fn === 'pct' ? '%' : fn;
+        updateExpr(label + '(' + parseFloat(val.toPrecision(8)) + ') =');
+        expr = displayVal.toString();
+        setResult(displayVal);
+        justEvaled = true;
+      } catch (e) {
+        setResult('Error', true);
+      }
+    }
+
+    function factorial(n) {
+      if (n === 0 || n === 1) return 1;
+      let r = 1;
+      for (let i = 2; i <= n; i++) r *= i;
+      return r;
+    }
+
+    // ── evaluate ──
+    function evaluate() {
+      if (!expr) return;
+      try {
+        const displayExpr = expr;
+        const res = evalExpr(expr);
+        if (!isFinite(res) || isNaN(res)) { setResult('Error', true); return; }
+        const displayVal = parseFloat(res.toPrecision(10));
+        updateExpr(displayExpr + ' =');
+        expr = displayVal.toString();
+        setResult(displayVal);
+        justEvaled = true;
+        lastResult = displayVal;
+        const eqBtn = document.querySelector('.btn.eq');
+        if (eqBtn) { eqBtn.classList.remove('glow');
+          void eqBtn.offsetWidth;
+          eqBtn.classList.add('glow'); }
+      } catch (e) {
+        setResult('Error', true);
+      }
+    }
+
+    // ── clear / backspace ──
+    function clearAll() {
+      expr = '';
+      justEvaled = false;
+      updateExpr('');
+      resultEl.textContent = '0';
+      resultEl.className = 'result';
+      resultEl.classList.remove('error', 'success');
+    }
+
+    function backspace() {
+      if (justEvaled) { clearAll(); return; }
+      expr = expr.slice(0, -1);
+      updateExpr(expr);
+      resultEl.textContent = expr || '0';
+      resultEl.className = 'result';
+      resultEl.classList.remove('error', 'success');
+    }
+
+    // ── negate ──
+    function negate() {
+      if (!expr) return;
+      try {
+        const val = evalExpr(expr);
+        const nv = -val;
+        expr = parseFloat(nv.toPrecision(10)).toString();
+        updateExpr(expr);
+        resultEl.textContent = expr;
+        resultEl.className = 'result';
+        resultEl.classList.remove('error', 'success');
+      } catch (e) {}
+    }
+
+    // ── button definitions ──
+    const buttons = [
+      { label: 'sin', type: 'fn', action: () => applyFn('sin') },
+      { label: 'cos', type: 'fn', action: () => applyFn('cos') },
+      { label: 'tan', type: 'fn', action: () => applyFn('tan') },
+      { label: 'sin⁻¹', type: 'fn', action: () => applyFn('asin') },
+      { label: 'cos⁻¹', type: 'fn', action: () => applyFn('acos') },
+
+      { label: 'tan⁻¹', type: 'fn', action: () => applyFn('atan') },
+      { label: 'ln', type: 'fn', action: () => applyFn('ln') },
+      { label: 'log', type: 'fn', action: () => applyFn('log10') },
+      { label: '√', type: 'fn', action: () => applyFn('sqrt') },
+      { label: 'x²', type: 'fn', action: () => applyFn('sq') },
+
+      { label: 'xʸ', type: 'op', action: () => appendExpr('^') },
+      { label: 'n!', type: 'fn', action: () => applyFn('fact') },
+      { label: 'π', type: 'fn', action: () => appendVal(Math.PI) },
+      { label: 'e', type: 'fn', action: () => appendVal(Math.E) },
+      { label: '1/x', type: 'fn', action: () => applyFn('inv') },
+
+      { label: '|x|', type: 'fn', action: () => applyFn('abs') },
+      { label: '±', type: 'fn', action: () => negate() },
+      { label: 'EE', type: 'fn', action: () => appendExpr('e') },
+      { label: '(', type: 'op', action: () => appendExpr('(') },
+      { label: ')', type: 'op', action: () => appendExpr(')') },
+
+      { label: 'C', type: 'clr', action: () => clearAll() },
+      { label: '⌫', type: 'clr', action: () => backspace() },
+      { label: '%', type: 'op', action: () => applyFn('pct') },
+      { label: '÷', type: 'op', action: () => appendExpr('/') },
+      { label: '×', type: 'op', action: () => appendExpr('*') },
+
+      { label: '7', type: 'num', action: () => appendExpr('7') },
+      { label: '8', type: 'num', action: () => appendExpr('8') },
+      { label: '9', type: 'num', action: () => appendExpr('9') },
+      { label: '−', type: 'op', action: () => appendExpr('-') },
+      { label: '+', type: 'op', action: () => appendExpr('+') },
+
+      { label: '4', type: 'num', action: () => appendExpr('4') },
+      { label: '5', type: 'num', action: () => appendExpr('5') },
+      { label: '6', type: 'num', action: () => appendExpr('6') },
+      { label: '=', type: 'eq', action: () => evaluate(), span: 2 },
+
+      { label: '1', type: 'num', action: () => appendExpr('1') },
+      { label: '2', type: 'num', action: () => appendExpr('2') },
+      { label: '3', type: 'num', action: () => appendExpr('3') },
+      { label: '0', type: 'num', action: () => appendExpr('0') },
+      { label: '.', type: 'num', action: () => appendExpr('.') },
+    ];
+
+    // ── render ──
+    function render() {
+      const grid = document.getElementById('buttons');
+      grid.innerHTML = '';
+      buttons.forEach(b => {
+        const el = document.createElement('button');
+        el.textContent = b.label;
+        el.className = 'btn ' + b.type;
+        if (b.span) el.classList.add('span-' + b.span);
+        el.addEventListener('click', b.action);
+        grid.appendChild(el);
+      });
+    }
+
+    // ── keyboard ──
+    document.addEventListener('keydown', e => {
+      const key = e.key;
+      if (key >= '0' && key <= '9') { appendExpr(key);
+        e.preventDefault(); } else if (key === '.') { appendExpr('.');
+        e.preventDefault(); } else if (key === '+') { appendExpr('+');
+        e.preventDefault(); } else if (key === '-') { appendExpr('-');
+        e.preventDefault(); } else if (key === '*') { appendExpr('*');
+        e.preventDefault(); } else if (key === '/') { appendExpr('/');
+        e.preventDefault(); } else if (key === '(') { appendExpr('(');
+        e.preventDefault(); } else if (key === ')') { appendExpr(')');
+        e.preventDefault(); } else if (key === '^') { appendExpr('^');
+        e.preventDefault(); } else if (key === 'Enter' || key === '=') { evaluate();
+        e.preventDefault(); } else if (key === 'Backspace') { backspace();
+        e.preventDefault(); } else if (key === 'Escape') { clearAll();
+        e.preventDefault(); } else if (key === 'e' || key === 'E') { appendExpr('e');
+        e.preventDefault(); }
+    });
+
+    // ── init ──
+    render();
+    updateExpr('');
+    resultEl.textContent = '0';
+  </script>
+</body>
+</html>
